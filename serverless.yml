@@ -1,4 +1,4 @@
-service: service-name # Change this to your service name
+service: omni-coupa-integration
 
 provider:
   name: aws
@@ -33,10 +33,19 @@ provider:
     name: ${ssm:/omni-dw/${self:provider.stage}/sls/deployment/bucket}
     serverSideEncryption: AES256
 
+custom:
+  region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'dev'}
+  tags:
+    Application: OmniCoupaIntegration
+    CreateBy: BizCloudExperts
+    Environment: ${self:custom.stage}
+
 package:
   individually: true
 
 functions:
+  cw-invoices-to-coupa: ${file(config/functions/cw-invoices-to-coupa.yml):function}
 
 layers:
   NodeModules:
