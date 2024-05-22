@@ -4,7 +4,7 @@ const AWS = require('aws-sdk');
 const axios = require('axios');
 const { get } = require('lodash');
 const { v4: uuidv4 } = require('uuid');
-const moment = require('moment');
+const moment = require('moment-timezone');
 
 const cstDate = moment().tz('America/Chicago');
 const { getConnectionToRds, prepareXML, makeApiRequest, putItem } = require('../shared/cw-wt-invoices-to-coupa/helper');
