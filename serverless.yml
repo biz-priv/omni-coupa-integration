@@ -11,23 +11,44 @@ provider:
       - ${ssm:/omni-dw/${self:provider.stage}/lambda/sgId}
     subnetIds:
       - ${ssm:/omni-dw/${self:provider.stage}/lambda/subnetA}
-  iamRoleStatements:
-    - Effect: 'Allow'
-      Action:
-        - logs:CreateLogGroup
-        - logs:CreateLogStream
-        - logs:PutLogEvents
-        - ec2:CreateNetworkInterface
-        - ec2:DescribeNetworkInterfaces
-        - ec2:DetachNetworkInterface
-        - ec2:DeleteNetworkInterface
-        - ec2:AssignPrivateIpAddresses
-        - ec2:UnassignPrivateIpAddresses
-      Resource: '*'
+    iamRoleStatements:
+      - Effect: "Allow"
+        Action:
+            - logs:CreateLogGroup
+            - logs:CreateLogStream
+            - logs:PutLogEvents
+            - ec2:CreateNetworkInterface
+            - ec2:DescribeNetworkInterfaces
+            - ec2:DetachNetworkInterface
+            - ec2:DeleteNetworkInterface
+            - ec2:AssignPrivateIpAddresses
+            - ec2:UnassignPrivateIpAddresses
+        Resource: "*"
+      - Effect: Allow
+        Action:
+            - s3:GetObject
+            - s3:ListBucket
+            - s3:PutObject
+            - dynamodb:PutItem
+            - dynamodb:UpdateItem
+            - dynamodb:GetItem
+            - dynamodb:Query
+            - dynamodb:DeleteItem
+            - dynamodb:Scan
+            - sqs:GetQueueUrl
+            - sqs:GetQueueAttributes
+            - sqs:ReceiveMessage
+            - sqs:DeleteMessage
+            - sqs:SendMessageBatch
+            - sqs:SendMessage
+            - secretsmanager:*
+            - sns:*
+            - ses:*
+        Resource: "*"
   environment:
     REGION: ${self:provider.region}
     STAGE: ${self:provider.stage}
-    ERROR_SNS_TOPIC_ARN: ${ssm:/omni-reports/${self:provider.stage}/error-notification/sns/arn}
+    ERROR_SNS_TOPIC_ARN: ${ssm:/omni-coupa-integration/${self:provider.stage}/error-notification-sns-arn}
 
   deploymentBucket:
     name: ${ssm:/omni-dw/${self:provider.stage}/sls/deployment/bucket}
@@ -46,7 +67,7 @@ package:
 
 functions:
   cw-invoices-to-coupa: ${file(config/functions/cw-invoices-to-coupa.yml):function}
-
+  wt-invoices-to-coupa: ${file(config/functions/wt-invoices-to-coupa.yml):function}
 layers:
   NodeModules:
     path: lambdaLayer/lib

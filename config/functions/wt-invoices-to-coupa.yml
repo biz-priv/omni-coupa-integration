@@ -1,14 +1,14 @@
 ---
 function:
-  name: omni-cw-invoices-to-coupa-${self:provider.stage}
-  handler: src/cw-invoices-to-coupa/index.handler
+  name: omni-wt-invoices-to-coupa-${self:provider.stage}
+  handler: src/wt-invoices-to-coupa/index.handler
   runtime: nodejs20.x
   timeout: 900
   layers:
     - { Ref: NodeModulesLambdaLayer }
   package:
     include:
-      - 'src/cw-invoices-to-coupa/**'
+      - 'src/wt-invoices-to-coupa/**'
       - 'src/shared/**'
     exclude:
       - '**/*'
@@ -23,6 +23,7 @@ function:
     ENVIRONMENT: ${self:provider.stage}
     LOGS_TABLE: ${ssm:/omni-coupa-integration/${self:provider.stage}/omni-coupa-logs-table-name}
     COUPA_API_URL: ${ssm:/omni-coupa-integration/${self:provider.stage}/api-url}
-    BILL_NUMBER: ${ssm:/omni-coupa-integration/${self:provider.stage}/cw-bill-number}
+    BILL_NUMBER: ${ssm:/omni-coupa-integration/${self:provider.stage}/wt-bill-number}
     WEBSLI_TOKEN: ${ssm:/omni-coupa-integration/${self:provider.stage}/websli-token}
     WEBSLI_URL: ${ssm:/dell-narvar-pod-doc/${self:provider.stage}/websli-url}
+

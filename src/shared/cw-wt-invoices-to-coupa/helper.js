@@ -1,8 +1,12 @@
 'use strict';
 
+const AWS = require('aws-sdk');
 const axios = require('axios');
 const mysql = require('mysql2/promise');
 const xml2js = require('xml2js');
+
+const dynamoDb = new AWS.DynamoDB.DocumentClient();
+
 
 async function getConnectionToRds() {
   try {
@@ -273,7 +277,7 @@ async function prepareXML(guid, filename, total, b64str) {
 
 async function makeApiRequest(guid, payload) {
   try {
-    const apiEndPoint = 'https://cloudflare-test.coupahost.com/cxml/invoices';
+    const apiEndPoint = process.env.COUPA_API_URL;
     const apiHeaders = {
       'Content-Type': `multipart/related; boundary=${guid}; type=text/xml; start=<payload.xml>`,
     };
@@ -296,8 +300,25 @@ async function makeApiRequest(guid, payload) {
   }
 }
 
+async function putItem(item) {
+  let params;
+  try {
+    params = {
+      TableName: process.env.LOGS_TABLE,
+      Item: item,
+    };
+    console.info('Insert Params: ', params);
+    const dynamoInsert = await dynamoDb.put(params).promise();
+    return dynamoInsert;
+  } catch (error) {
+    console.error('Put Item Error: ', error, '\nPut params: ', params);
+    throw error;
+  }
+}
+
 module.exports = {
   getConnectionToRds,
   prepareXML,
   makeApiRequest,
+  putItem,
 };
