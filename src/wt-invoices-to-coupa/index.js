@@ -4,7 +4,7 @@ const AWS = require('aws-sdk');
 const axios = require('axios');
 const { get } = require('lodash');
 const { v4: uuidv4 } = require('uuid');
-const moment = require('moment');
+const moment = require('moment-timezone');
 
 const cstDate = moment().tz('America/Chicago');
 const { getConnectionToRds, prepareXML, makeApiRequest, putItem } = require('../shared/cw-wt-invoices-to-coupa/helper');
@@ -34,14 +34,16 @@ module.exports.handler = async (event, context) => {
       const invoice = get(element, 'invoice_nbr');
       dynamoData.InvoiceNbr = invoice;
 
+      dynamoData.SourceSystemType = 'WT';
       try {
-        const totalAndGcCode = await getTotalAndGcCode(invoice, connections);
-        const uniqueRefNbr = get(totalAndGcCode, '[0].unique_ref_nbr');
-        const gcCode = get(totalAndGcCode, '[0].gc_code');
-        const totalSum = get(totalAndGcCode, '[0].total_sum');
-        const b64str = await callWtRestApi(uniqueRefNbr, gcCode);
+        const invoiceDetails = await fetchInvoiceDetails(invoice, connections);
+        // const housebill = get(invoiceDetails, '[0].housebill_nbr');
+        // const gcCode = get(invoiceDetails, '[0].gc_code');
+        const invoiceDate = get(invoiceDetails,'[0].invoice_date');
+        const totalSum = get(invoiceDetails, '[0].total_sum');
+        const b64str = await callWtRestApi(invoice);
 
-        const xmlTOCoupa = await prepareXML(guid, invoice, totalSum, b64str);
+        const xmlTOCoupa = await prepareXML(guid, invoice, totalSum, b64str,invoiceDate);
         dynamoData.XmlTOCoupa = xmlTOCoupa;
 
         const response = await makeApiRequest(guid, xmlTOCoupa);
@@ -121,22 +123,23 @@ async function getInvoices(connections) {
   }
 }
 
-async function getTotalAndGcCode(invoice, connections) {
+async function fetchInvoiceDetails(invoice, connections) {
   try {
-    const query = `SELECT gc_code,unique_ref_nbr,SUM(total) as total_sum from dw_prod.interface_ar_his iah where invoice_nbr = '${invoice}';`;
+    const query = `SELECT invoice_date,SUM(total) as total_sum from dw_prod.interface_ar_his iah where invoice_nbr = '${invoice}';`;
     console.info('query', query);
     const [rows] = await connections.execute(query);
     const result = rows;
     return result;
   } catch (error) {
-    console.error('getTotalAndGcCode: no data found');
+    console.error('fetchInvoiceDetails: no data found');
     throw error;
   }
 }
 
-async function callWtRestApi(invoice, gcCode) {
+async function callWtRestApi(invoice) {
   try {
-    const url = `${process.env.WEBSLI_URL}/${process.env.WEBSLI_TOKEN}/invoice=${invoice}|company=${gcCode}/doctype=BI`;
+    const url = `${process.env.WEBSLI_URL}/${process.env.WEBSLI_TOKEN}/housebill=${invoice}/doctype=BI|acctno=${process.env.BILL_NUMBER}`;
+    // const url = `https://websli.omnilogistics.com/wtProd/getwtdoc/v1/json/${process.env.WEBSLI_TOKEN}/housebill=${invoice}/doctype=BI|acctno=${process.env.BILL_NUMBER}`;
     console.info(`url: ${url}`);
 
     const response = await axios.get(url);

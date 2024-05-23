@@ -24,7 +24,7 @@ async function getConnectionToRds() {
   }
 }
 
-async function prepareXML(guid, filename, total, b64str) {
+async function prepareXML(guid, filename, total, b64str,InvoiceDate) {
   try {
     const builder = new xml2js.Builder({
       headless: true,
@@ -76,7 +76,7 @@ async function prepareXML(guid, filename, total, b64str) {
                 invoiceID: filename,
                 purpose: 'standard',
                 operation: 'new',
-                invoiceDate: '2024-02-29T00:00:00-06:00',
+                invoiceDate: InvoiceDate,
               },
               InvoiceDetailHeaderIndicator: '',
               InvoiceDetailLineIndicator: {
