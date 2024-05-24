@@ -7,7 +7,7 @@ const { v4: uuidv4 } = require('uuid');
 const moment = require('moment-timezone');
 
 const cstDate = moment().tz('America/Chicago');
-const { getConnectionToRds, prepareXML, makeApiRequest, putItem } = require('../shared/cw-wt-invoices-to-coupa/helper');
+const { getConnectionToRds, prepareXML, makeApiRequest, putItem, getStatusCode } = require('../shared/cw-wt-invoices-to-coupa/helper');
 
 const sns = new AWS.SNS();
 
@@ -37,13 +37,18 @@ module.exports.handler = async (event, context) => {
       dynamoData.SourceSystemType = 'CW';
       try {
         const invoiceDetails = await fetchInvoiceDetails(invoice, connections);
+
         const uniqueRefNbr = get(invoiceDetails, '[0].unique_ref_nbr');
         const gcCode = get(invoiceDetails, '[0].gc_code');
         const totalSum = get(invoiceDetails, '[0].total_sum');
-        const invoiceDate = get(invoiceDetails,'[0].invoice_date');
+
+        let invoiceDate = get(invoiceDetails, '[0].invoice_date');
+        if (invoiceDate instanceof Date) {
+          invoiceDate = invoiceDate.toISOString();
+        }
         const b64str = await callWtRestApi(uniqueRefNbr, gcCode);
 
-        const xmlTOCoupa = await prepareXML(guid, invoice, totalSum, b64str,invoiceDate);
+        const xmlTOCoupa = await prepareXML(guid, invoice, totalSum, b64str, invoiceDate);
         dynamoData.XmlTOCoupa = xmlTOCoupa;
 
         const response = await makeApiRequest(guid, xmlTOCoupa);
@@ -51,7 +56,17 @@ module.exports.handler = async (event, context) => {
 
         console.info('response: ', response);
 
-        dynamoData.Status = 'SUCCESS';
+        const statusCodeAndMessage = await getStatusCode(response);
+        if (get(statusCodeAndMessage, 'statusCode') === '200') {
+          dynamoData.StatusCode = get(statusCodeAndMessage, 'statusCode');
+          dynamoData.Message = get(statusCodeAndMessage, 'statusMessage');
+          dynamoData.Status = 'SUCCESS';
+        }else{
+          dynamoData.StatusCode = get(statusCodeAndMessage, 'statusCode');
+          dynamoData.Message = get(statusCodeAndMessage, 'statusMessage');
+          dynamoData.Status = 'FAILED';
+          throw new Error(`Invoice processing failed with status code: ${dynamoData.StatusCode} and message: ${dynamoData.Message}`);
+        }
         await putItem(dynamoData);
       } catch (innerError) {
         console.error(`Error processing invoice ${get(element, 'invoice_nbr')}:`, innerError);
@@ -139,7 +154,7 @@ async function fetchInvoiceDetails(invoice, connections) {
 async function callWtRestApi(uniqueRefNbr, gcCode) {
   try {
     const url = `${process.env.WEBSLI_URL}/${process.env.WEBSLI_TOKEN}/invoice=${uniqueRefNbr}|company=${gcCode}/doctype=BI`;
-    // const url = `https://websli.omnilogistics.com/wtProd/getwtdoc/v1/json/${process.env.WEBSLI_TOKEN}/invoice=${invoice}|company=${gcCode}/doctype=BI`;
+    // const url = `https://websli.omnilogistics.com/wtProd/getwtdoc/v1/json/${process.env.WEBSLI_TOKEN}/invoice=${uniqueRefNbr}|company=${gcCode}/doctype=BI`;
     console.info(`url: ${url}`);
 
     const response = await axios.get(url);

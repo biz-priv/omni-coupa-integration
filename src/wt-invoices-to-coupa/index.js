@@ -7,7 +7,7 @@ const { v4: uuidv4 } = require('uuid');
 const moment = require('moment-timezone');
 
 const cstDate = moment().tz('America/Chicago');
-const { getConnectionToRds, prepareXML, makeApiRequest, putItem } = require('../shared/cw-wt-invoices-to-coupa/helper');
+const { getConnectionToRds, prepareXML, makeApiRequest, putItem, getStatusCode } = require('../shared/cw-wt-invoices-to-coupa/helper');
 
 const sns = new AWS.SNS();
 
@@ -39,11 +39,15 @@ module.exports.handler = async (event, context) => {
         const invoiceDetails = await fetchInvoiceDetails(invoice, connections);
         // const housebill = get(invoiceDetails, '[0].housebill_nbr');
         // const gcCode = get(invoiceDetails, '[0].gc_code');
-        const invoiceDate = get(invoiceDetails,'[0].invoice_date');
+        let invoiceDate = get(invoiceDetails, '[0].invoice_date');
+        if (invoiceDate instanceof Date) {
+          invoiceDate = invoiceDate.toISOString();
+        }
+
         const totalSum = get(invoiceDetails, '[0].total_sum');
         const b64str = await callWtRestApi(invoice);
 
-        const xmlTOCoupa = await prepareXML(guid, invoice, totalSum, b64str,invoiceDate);
+        const xmlTOCoupa = await prepareXML(guid, invoice, totalSum, b64str, invoiceDate);
         dynamoData.XmlTOCoupa = xmlTOCoupa;
 
         const response = await makeApiRequest(guid, xmlTOCoupa);
@@ -51,7 +55,18 @@ module.exports.handler = async (event, context) => {
 
         console.info('response: ', response);
 
-        dynamoData.Status = 'SUCCESS';
+        const statusCodeAndMessage = await getStatusCode(response);
+        if (get(statusCodeAndMessage, 'statusCode') === '200') {
+          dynamoData.StatusCode = get(statusCodeAndMessage, 'statusCode');
+          dynamoData.Message = get(statusCodeAndMessage, 'statusMessage');
+          dynamoData.Status = 'SUCCESS';
+        }else{
+          dynamoData.StatusCode = get(statusCodeAndMessage, 'statusCode');
+          dynamoData.Message = get(statusCodeAndMessage, 'statusMessage');
+          dynamoData.Status = 'FAILED';
+          throw new Error(`Invoice processing failed with status code: ${dynamoData.StatusCode} and message: ${dynamoData.Message}`);
+        }
+
         await putItem(dynamoData);
       } catch (innerError) {
         console.error(`Error processing invoice ${get(element, 'invoice_nbr')}:`, innerError);
@@ -109,9 +124,11 @@ async function getInvoices(connections) {
 
     // const query = `SELECT DISTINCT invoice_nbr
     //       FROM dw_prod.interface_ar_his iah
-    //       WHERE customer_id = 'CLOUUSSFO'
-    //         AND processed_date = '2024-03-15'
-    //         AND processed = 'P'`;
+    //       WHERE customer_id = 'CLOUDFLARE'
+    //         AND processed = 'P' limit 10`;
+
+  // const query = `SELECT DISTINCT invoice_nbr
+  //   FROM dw_prod.interface_ar_his iah where housebill_nbr = 'SFO3937231-00'`;
 
     console.info('query', query);
     const [rows] = await connections.execute(query);

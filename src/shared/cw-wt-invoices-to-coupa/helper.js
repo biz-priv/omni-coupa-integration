@@ -4,6 +4,7 @@ const AWS = require('aws-sdk');
 const axios = require('axios');
 const mysql = require('mysql2/promise');
 const xml2js = require('xml2js');
+const { get } = require('lodash');
 
 const dynamoDb = new AWS.DynamoDB.DocumentClient();
 
@@ -24,7 +25,7 @@ async function getConnectionToRds() {
   }
 }
 
-async function prepareXML(guid, filename, total, b64str,InvoiceDate) {
+async function prepareXML(guid, filename, total, b64str, InvoiceDate) {
   try {
     const builder = new xml2js.Builder({
       headless: true,
@@ -316,9 +317,26 @@ async function putItem(item) {
   }
 }
 
+async function getStatusCode(response) {
+  const parser = new xml2js.Parser({ explicitArray: false, mergeAttrs: true });
+  const responseObj = await parser.parseStringPromise(response);
+  console.info('responseObj', responseObj);
+
+  const statusCode = get(responseObj, 'cXML.Response.Status.code');
+  const statusMessage = get(responseObj, 'cXML.Response.Status._');
+
+  const result = {
+    statusCode,
+    statusMessage
+  };
+
+  return result;
+}
+
 module.exports = {
   getConnectionToRds,
   prepareXML,
   makeApiRequest,
   putItem,
+  getStatusCode,
 };
