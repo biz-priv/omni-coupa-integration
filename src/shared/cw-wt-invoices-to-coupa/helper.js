@@ -25,7 +25,7 @@ async function getConnectionToRds() {
   }
 }
 
-async function prepareXML(guid, filename, total, b64str, InvoiceDate) {
+async function prepareXML(guid, filename, total, b64str, InvoiceDate, curr) {
   try {
     const builder = new xml2js.Builder({
       headless: true,
@@ -188,7 +188,7 @@ async function prepareXML(guid, filename, total, b64str, InvoiceDate) {
                   Money: {
                     _: total,
                     $: {
-                      currency: 'USD',
+                      currency: curr,
                     },
                   },
                 },
@@ -207,7 +207,7 @@ async function prepareXML(guid, filename, total, b64str, InvoiceDate) {
                   Money: {
                     _: total,
                     $: {
-                      currency: 'USD',
+                      currency: curr,
                     },
                   },
                 },
@@ -218,7 +218,7 @@ async function prepareXML(guid, filename, total, b64str, InvoiceDate) {
                 Money: {
                   _: total,
                   $: {
-                    currency: 'USD',
+                    currency: curr,
                   },
                 },
               },

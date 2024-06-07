@@ -31,24 +31,25 @@ module.exports.handler = async (event, context) => {
       dynamoData.CSTDate = cstDate.format('YYYY-MM-DD');
       dynamoData.CSTDateTime = cstDate.format('YYYY-MM-DD HH:mm:ss');
 
-      const invoice = get(element, 'invoice_nbr');
+      const invoice = get(element, 'unique_ref_nbr');
       dynamoData.InvoiceNbr = invoice;
 
       dynamoData.SourceSystemType = 'CW';
       try {
         const invoiceDetails = await fetchInvoiceDetails(invoice, connections);
 
-        const uniqueRefNbr = get(invoiceDetails, '[0].unique_ref_nbr');
+        // const uniqueRefNbr = get(invoiceDetails, '[0].unique_ref_nbr');
         const gcCode = get(invoiceDetails, '[0].gc_code');
         const totalSum = get(invoiceDetails, '[0].total_sum');
+        const currency = get(invoiceDetails, '[0].currency');
 
         let invoiceDate = get(invoiceDetails, '[0].invoice_date');
         if (invoiceDate instanceof Date) {
           invoiceDate = invoiceDate.toISOString();
         }
-        const b64str = await callWtRestApi(uniqueRefNbr, gcCode);
+        const b64str = await callWtRestApi(invoice, gcCode);
 
-        const xmlTOCoupa = await prepareXML(guid, invoice, totalSum, b64str, invoiceDate);
+        const xmlTOCoupa = await prepareXML(guid, invoice, totalSum, b64str, invoiceDate, currency);
         dynamoData.XmlTOCoupa = xmlTOCoupa;
 
         const response = await makeApiRequest(guid, xmlTOCoupa);
@@ -69,8 +70,8 @@ module.exports.handler = async (event, context) => {
         }
         await putItem(dynamoData);
       } catch (innerError) {
-        console.error(`Error processing invoice ${get(element, 'invoice_nbr')}:`, innerError);
-        errors.push(`Invoice ${get(element, 'invoice_nbr')}: ${innerError.message || innerError}`);
+        console.error(`Error processing invoice ${get(element, 'unique_ref_nbr')}:`, innerError);
+        errors.push(`Invoice ${get(element, 'unique_ref_nbr')}: ${innerError.message || innerError}`);
         console.info('Error has been added to the errors array');
 
         dynamoData.Status = 'FAILED';
@@ -116,13 +117,13 @@ async function getInvoices(connections) {
       dbName = 'dw_prod.';
     }
     const tableName = `${dbName}interface_ar_his`;
-    const query = `SELECT DISTINCT invoice_nbr
+    const query = `SELECT DISTINCT unique_ref_nbr
         FROM ${tableName} iah
         WHERE customer_id = ${process.env.BILL_NUMBER}
           AND processed_date = ${today}
           AND processed = 'P'`;
 
-    // const query = `SELECT DISTINCT invoice_nbr
+    // const query = `SELECT DISTINCT unique_ref_nbr
     //       FROM dw_prod.interface_ar_his iah
     //       WHERE customer_id = 'CLOUUSSFO'
     //         AND processed_date = '2024-03-15'
@@ -140,7 +141,7 @@ async function getInvoices(connections) {
 
 async function fetchInvoiceDetails(invoice, connections) {
   try {
-    const query = `SELECT invoice_date,gc_code,unique_ref_nbr,SUM(total) as total_sum from dw_prod.interface_ar_his iah where invoice_nbr = '${invoice}';`;
+    const query = `SELECT invoice_date,gc_code,SUM(total),currency as total_sum from dw_prod.interface_ar_his iah where unique_ref_nbr = '${invoice}';`;
     console.info('query', query);
     const [rows] = await connections.execute(query);
     const result = rows;

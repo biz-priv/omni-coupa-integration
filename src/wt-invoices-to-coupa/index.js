@@ -40,6 +40,7 @@ module.exports.handler = async (event, context) => {
         // const housebill = get(invoiceDetails, '[0].housebill_nbr');
         // const gcCode = get(invoiceDetails, '[0].gc_code');
         let invoiceDate = get(invoiceDetails, '[0].invoice_date');
+        const currency = get(invoiceDetails, '[0].currency');
         if (invoiceDate instanceof Date) {
           invoiceDate = invoiceDate.toISOString();
         }
@@ -47,7 +48,7 @@ module.exports.handler = async (event, context) => {
         const totalSum = get(invoiceDetails, '[0].total_sum');
         const b64str = await callWtRestApi(invoice);
 
-        const xmlTOCoupa = await prepareXML(guid, invoice, totalSum, b64str, invoiceDate);
+        const xmlTOCoupa = await prepareXML(guid, invoice, totalSum, b64str, invoiceDate, currency);
         dynamoData.XmlTOCoupa = xmlTOCoupa;
 
         const response = await makeApiRequest(guid, xmlTOCoupa);
@@ -142,7 +143,7 @@ async function getInvoices(connections) {
 
 async function fetchInvoiceDetails(invoice, connections) {
   try {
-    const query = `SELECT invoice_date,SUM(total) as total_sum from dw_prod.interface_ar_his iah where invoice_nbr = '${invoice}';`;
+    const query = `SELECT invoice_date,SUM(total),currency as total_sum from dw_prod.interface_ar_his iah where invoice_nbr = '${invoice}';`;
     console.info('query', query);
     const [rows] = await connections.execute(query);
     const result = rows;
