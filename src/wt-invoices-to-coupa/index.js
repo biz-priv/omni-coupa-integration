@@ -143,7 +143,7 @@ async function getInvoices(connections) {
 
 async function fetchInvoiceDetails(invoice, connections) {
   try {
-    const query = `SELECT invoice_date,SUM(total),currency as total_sum from dw_prod.interface_ar_his iah where invoice_nbr = '${invoice}';`;
+    const query = `SELECT invoice_date,currency,SUM(total) as total_sum from dw_prod.interface_ar_his iah where invoice_nbr = '${invoice}';`;
     console.info('query', query);
     const [rows] = await connections.execute(query);
     const result = rows;

@@ -31,25 +31,28 @@ module.exports.handler = async (event, context) => {
       dynamoData.CSTDate = cstDate.format('YYYY-MM-DD');
       dynamoData.CSTDateTime = cstDate.format('YYYY-MM-DD HH:mm:ss');
 
-      const invoice = get(element, 'unique_ref_nbr');
-      dynamoData.InvoiceNbr = invoice;
+      const uniqueRefNbr = get(element, 'unique_ref_nbr');
+      dynamoData.UniqueRefNbr = uniqueRefNbr;
 
       dynamoData.SourceSystemType = 'CW';
       try {
-        const invoiceDetails = await fetchInvoiceDetails(invoice, connections);
+        const invoiceDetails = await fetchInvoiceDetails(uniqueRefNbr, connections);
 
         // const uniqueRefNbr = get(invoiceDetails, '[0].unique_ref_nbr');
         const gcCode = get(invoiceDetails, '[0].gc_code');
         const totalSum = get(invoiceDetails, '[0].total_sum');
         const currency = get(invoiceDetails, '[0].currency');
+        const invoiceNbr = get(invoiceDetails, '[0].invoice_nbr');
+
+        dynamoData.InvoiceNbr = invoiceNbr;
 
         let invoiceDate = get(invoiceDetails, '[0].invoice_date');
         if (invoiceDate instanceof Date) {
           invoiceDate = invoiceDate.toISOString();
         }
-        const b64str = await callWtRestApi(invoice, gcCode);
+        const b64str = await callWtRestApi(uniqueRefNbr, gcCode);
 
-        const xmlTOCoupa = await prepareXML(guid, invoice, totalSum, b64str, invoiceDate, currency);
+        const xmlTOCoupa = await prepareXML(guid, invoiceNbr, totalSum, b64str, invoiceDate, currency);
         dynamoData.XmlTOCoupa = xmlTOCoupa;
 
         const response = await makeApiRequest(guid, xmlTOCoupa);
@@ -129,6 +132,10 @@ async function getInvoices(connections) {
     //         AND processed_date = '2024-03-15'
     //         AND processed = 'P'`;
 
+    // const query = `SELECT DISTINCT unique_ref_nbr
+    // FROM dw_prod.interface_ar_his iah
+    // WHERE customer_id = 'CLOUUSSFO' limit 3`;
+
     console.info('query', query);
     const [rows] = await connections.execute(query);
     const result = rows;
@@ -141,7 +148,7 @@ async function getInvoices(connections) {
 
 async function fetchInvoiceDetails(invoice, connections) {
   try {
-    const query = `SELECT invoice_date,gc_code,SUM(total),currency as total_sum from dw_prod.interface_ar_his iah where unique_ref_nbr = '${invoice}';`;
+    const query = `SELECT invoice_date,gc_code,currency,invoice_nbr,SUM(total) as total_sum from dw_prod.interface_ar_his iah where unique_ref_nbr = '${invoice}';`;
     console.info('query', query);
     const [rows] = await connections.execute(query);
     const result = rows;
