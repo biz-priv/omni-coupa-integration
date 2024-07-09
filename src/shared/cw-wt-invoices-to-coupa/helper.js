@@ -12,11 +12,11 @@ const dynamoDb = new AWS.DynamoDB.DocumentClient();
 async function getConnectionToRds() {
   try {
     const connection = await mysql.createConnection({
-      host: 'omni-dw-prod-1.csqnwcsrz7o6.us-east-1.rds.amazonaws.com',
-      user: 'admin',
-      password: 'UG!FSwI-qZ{7SD8%',
-      database: 'dw_prod',
-      port: '3306'
+      host: process.env.DB_HOST,
+      user: process.env.DB_USERNAME,
+      password: process.env.DB_PASSWORD,
+      database: process.env.DB_NAME,
+      port: process.env.DB_PORT
     });
     return connection;
   } catch (error) {

@@ -20,7 +20,14 @@ module.exports.handler = async (event, context) => {
   try {
     const connections = await getConnectionToRds();
 
-    const invoicesList = await getInvoices(connections);
+    const invoicesListFromHistoryTable = await getInvoicesFromHistoryTable(connections);
+
+    const invoicesListFromMainTable = await getInvoicesFromMainTable(connections);
+
+    const combinedList = [...invoicesListFromHistoryTable, ...invoicesListFromMainTable];
+    const invoicesList = combinedList.filter((invoice, index, self) =>
+      index === self.findIndex((t) => t.invoice_nbr === invoice.invoice_nbr)
+    );
 
     console.info('invoicesList: ', invoicesList);
 
@@ -107,7 +114,7 @@ module.exports.handler = async (event, context) => {
   }
 };
 
-async function getInvoices(connections) {
+async function getInvoicesFromHistoryTable(connections) {
   try {
     const today = moment().format('YYYY-MM-DD');
     let dbName;
@@ -118,9 +125,9 @@ async function getInvoices(connections) {
     }
     const tableName = `${dbName}interface_ar_his`;
     const query = `SELECT DISTINCT invoice_nbr
-        FROM ${tableName} iah
-        WHERE customer_id = ${process.env.BILL_NUMBER}
-          AND processed_date = ${today}
+          FROM ${tableName} iah
+          WHERE bill_to_custno = ${process.env.BILL_NUMBER}
+          AND CAST(processed_date AS DATE) >= ${today}
           AND processed = 'P'`;
 
     // const query = `SELECT DISTINCT invoice_nbr
@@ -128,18 +135,53 @@ async function getInvoices(connections) {
     //       WHERE customer_id = 'CLOUDFLARE'
     //         AND processed = 'P' limit 10`;
 
-  // const query = `SELECT DISTINCT invoice_nbr
-  //   FROM dw_prod.interface_ar_his iah where housebill_nbr = 'SFO3937231-00'`;
+    // const query = `SELECT DISTINCT invoice_nbr
+    //   FROM dw_prod.interface_ar_his iah where housebill_nbr = 'SFO3937231-00'`;
 
     console.info('query', query);
     const [rows] = await connections.execute(query);
     const result = rows;
     return result;
   } catch (error) {
-    console.error('getInvoices: no data found');
+    console.error('getInvoicesFromHistoryTable: no data found');
     throw error;
   }
 }
+
+async function getInvoicesFromMainTable(connections) {
+  try {
+    const today = moment().format('YYYY-MM-DD');
+    let dbName;
+    if (process.env.ENVIRONMENT === 'dev') {
+      dbName = 'dw_uat.';
+    } else {
+      dbName = 'dw_prod.';
+    }
+    const tableName = `${dbName}interface_ar`;
+    const query = `SELECT DISTINCT invoice_nbr
+          FROM ${tableName} ia
+          WHERE bill_to_custno = ${process.env.BILL_NUMBER}
+          AND CAST(processed_date AS DATE) >= ${today}
+          AND processed = 'P'`;
+
+    // const query = `SELECT DISTINCT invoice_nbr
+    //       FROM dw_prod.interface_ar_his iah
+    //       WHERE customer_id = 'CLOUDFLARE'
+    //         AND processed = 'P' limit 10`;
+
+    // const query = `SELECT DISTINCT invoice_nbr
+    //   FROM dw_prod.interface_ar_his iah where housebill_nbr = 'SFO3937231-00'`;
+
+    console.info('query', query);
+    const [rows] = await connections.execute(query);
+    const result = rows;
+    return result;
+  } catch (error) {
+    console.error('getInvoicesFromMainTable: no data found');
+    throw error;
+  }
+}
+
 
 async function fetchInvoiceDetails(invoice, connections) {
   try {

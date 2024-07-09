@@ -15,10 +15,10 @@ function:
   # events:
   #   - schedule: cron(*/30 * * * ? *)
   environment:
-    # DB_NAME: ${ssm:/omni-dw/${self:provider.stage}/rds/db.name}
+    DB_NAME: ${ssm:/omni-dw/${self:provider.stage}/rds/db.name}
     DB_USERNAME: ${ssm:/omni-dw/${self:provider.stage}/rds/db.username}
     DB_HOST: ${ssm:/omni-dw/${self:provider.stage}/rds/db.endpoint.ip}
-    # DB_PORT: ${ssm:/omni-dw/${self:provider.stage}/rds/db.port}
+    DB_PORT: ${ssm:/omni-dw/${self:provider.stage}/rds/db.port}
     DB_PASSWORD: ${ssm:/omni-dw/${self:provider.stage}/rds/db.password}
     ENVIRONMENT: ${self:provider.stage}
     LOGS_TABLE: ${ssm:/omni-coupa-integration/${self:provider.stage}/omni-coupa-logs-table-name}
