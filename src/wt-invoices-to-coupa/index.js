@@ -1,3 +1,10 @@
+/*
+* File: src/wt-invoices-to-coupa/index.js
+* Project: omni-coupa-integration
+* Author: Bizcloud Experts
+* Date: 2024-07-10
+* Confidential and Proprietary
+*/
 'use strict';
 
 const AWS = require('aws-sdk');
@@ -126,8 +133,8 @@ async function getInvoicesFromHistoryTable(connections) {
     const tableName = `${dbName}interface_ar_his`;
     const query = `SELECT DISTINCT invoice_nbr
           FROM ${tableName} iah
-          WHERE bill_to_custno = ${process.env.BILL_NUMBER}
-          AND CAST(processed_date AS DATE) >= ${today}
+          WHERE bill_to_custno = '${process.env.BILL_NUMBER}'
+          AND CAST(processed_date AS DATE) >= '${today}'
           AND processed = 'P'`;
 
     // const query = `SELECT DISTINCT invoice_nbr
@@ -160,8 +167,8 @@ async function getInvoicesFromMainTable(connections) {
     const tableName = `${dbName}interface_ar`;
     const query = `SELECT DISTINCT invoice_nbr
           FROM ${tableName} ia
-          WHERE bill_to_custno = ${process.env.BILL_NUMBER}
-          AND CAST(processed_date AS DATE) >= ${today}
+          WHERE bill_to_custno = '${process.env.BILL_NUMBER}'
+          AND CAST(processed_date AS DATE) >= '${today}'
           AND processed = 'P'`;
 
     // const query = `SELECT DISTINCT invoice_nbr
@@ -185,10 +192,26 @@ async function getInvoicesFromMainTable(connections) {
 
 async function fetchInvoiceDetails(invoice, connections) {
   try {
-    const query = `SELECT invoice_date,currency,SUM(total) as total_sum from dw_prod.interface_ar_his iah where invoice_nbr = '${invoice}';`;
+    let dbName;
+    if (process.env.ENVIRONMENT === 'dev') {
+      dbName = 'dw_uat.';
+    } else {
+      dbName = 'dw_prod.';
+    }
+    const tableName = `${dbName}interface_ar_his`;
+    let query = `SELECT invoice_date, currency, SUM(total) as total_sum from ${tableName} iah where invoice_nbr = '${invoice}';`;
     console.info('query', query);
-    const [rows] = await connections.execute(query);
-    const result = rows;
+    let [rows] = await connections.execute(query);
+    let result = rows;
+    if (result.length > 0) {
+      return result;
+    }
+
+    const tableNameFallback = `${dbName}interface_ar`;
+    query = `SELECT invoice_date, currency, SUM(total) as total_sum from ${tableNameFallback} ia where invoice_nbr = '${invoice}';`;
+    console.info('query', query);
+    [rows] = await connections.execute(query);
+    result = rows;
     return result;
   } catch (error) {
     console.error('fetchInvoiceDetails: no data found');

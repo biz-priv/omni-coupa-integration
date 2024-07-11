@@ -4,6 +4,8 @@ function:
   handler: src/cw-invoices-to-coupa/index.handler
   runtime: nodejs20.x
   timeout: 900
+  tags:
+    Name: cw-invoices-to-coupa
   layers:
     - { Ref: NodeModulesLambdaLayer }
   package:

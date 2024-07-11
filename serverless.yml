@@ -11,6 +11,10 @@ provider:
       - ${ssm:/omni-dw/${self:provider.stage}/lambda/sgId}
     subnetIds:
       - ${ssm:/omni-dw/${self:provider.stage}/lambda/subnetA}
+  stackTags:
+    Application: OmniCoupaIntegration
+    CreateBy: BizCloudExperts
+    Environment: ${self:provider.stage}
   iamRoleStatements:
     - Effect: "Allow"
       Action:
