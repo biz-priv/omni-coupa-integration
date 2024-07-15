@@ -51,8 +51,6 @@ module.exports.handler = async (event, context) => {
       dynamoData.SourceSystemType = 'WT';
       try {
         const invoiceDetails = await fetchInvoiceDetails(invoice, connections);
-        // const housebill = get(invoiceDetails, '[0].housebill_nbr');
-        // const gcCode = get(invoiceDetails, '[0].gc_code');
         let invoiceDate = get(invoiceDetails, '[0].invoice_date');
         const currency = get(invoiceDetails, '[0].currency');
         if (invoiceDate instanceof Date) {
@@ -137,14 +135,6 @@ async function getInvoicesFromHistoryTable(connections) {
           AND CAST(processed_date AS DATE) >= '${today}'
           AND processed = 'P'`;
 
-    // const query = `SELECT DISTINCT invoice_nbr
-    //       FROM dw_prod.interface_ar_his iah
-    //       WHERE customer_id = 'CLOUDFLARE'
-    //         AND processed = 'P' limit 10`;
-
-    // const query = `SELECT DISTINCT invoice_nbr
-    //   FROM dw_prod.interface_ar_his iah where housebill_nbr = 'SFO3937231-00'`;
-
     console.info('query', query);
     const [rows] = await connections.execute(query);
     const result = rows;
@@ -171,14 +161,6 @@ async function getInvoicesFromMainTable(connections) {
           AND CAST(processed_date AS DATE) >= '${today}'
           AND processed = 'P'`;
 
-    // const query = `SELECT DISTINCT invoice_nbr
-    //       FROM dw_prod.interface_ar_his iah
-    //       WHERE customer_id = 'CLOUDFLARE'
-    //         AND processed = 'P' limit 10`;
-
-    // const query = `SELECT DISTINCT invoice_nbr
-    //   FROM dw_prod.interface_ar_his iah where housebill_nbr = 'SFO3937231-00'`;
-
     console.info('query', query);
     const [rows] = await connections.execute(query);
     const result = rows;
@@ -203,7 +185,7 @@ async function fetchInvoiceDetails(invoice, connections) {
     console.info('query', query);
     let [rows] = await connections.execute(query);
     let result = rows;
-    if (result.length > 0) {
+    if (result[0].invoice_date && result[0].currency && result[0].total_sum) {
       return result;
     }
 
@@ -222,7 +204,6 @@ async function fetchInvoiceDetails(invoice, connections) {
 async function callWtRestApi(invoice) {
   try {
     const url = `${process.env.WEBSLI_URL}/${process.env.WEBSLI_TOKEN}/housebill=${invoice}/doctype=BI|acctno=${process.env.BILL_NUMBER}`;
-    // const url = `https://websli.omnilogistics.com/wtProd/getwtdoc/v1/json/${process.env.WEBSLI_TOKEN}/housebill=${invoice}/doctype=BI|acctno=${process.env.BILL_NUMBER}`;
     console.info(`url: ${url}`);
 
     const response = await axios.get(url);

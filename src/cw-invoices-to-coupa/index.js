@@ -52,7 +52,6 @@ module.exports.handler = async (event, context) => {
       try {
         const invoiceDetails = await fetchInvoiceDetails(uniqueRefNbr, connections);
 
-        // const uniqueRefNbr = get(invoiceDetails, '[0].unique_ref_nbr');
         const gcCode = get(invoiceDetails, '[0].gc_code');
         const totalSum = get(invoiceDetails, '[0].total_sum');
         const currency = get(invoiceDetails, '[0].currency');
@@ -88,7 +87,7 @@ module.exports.handler = async (event, context) => {
         await putItem(dynamoData);
       } catch (innerError) {
         console.error(`Error processing invoice ${get(element, 'unique_ref_nbr')}:`, innerError);
-        errors.push(`Invoice ${get(element, 'unique_ref_nbr')}: ${innerError.message || innerError}`);
+        errors.push(`UniqueRefNbr ${get(element, 'unique_ref_nbr')}: ${innerError.message || innerError}`);
         console.info('Error has been added to the errors array');
 
         dynamoData.Status = 'FAILED';
@@ -140,15 +139,6 @@ async function getInvoicesFromHistoryTable(connections) {
                   WHERE bill_to_nbr = '${process.env.BILL_NUMBER}'
                   AND CAST(processed_date AS DATE) >= '${today}'
                   AND processed = 'P'`;
-    // const query = `SELECT DISTINCT unique_ref_nbr
-    //       FROM dw_prod.interface_ar_his iah
-    //       WHERE customer_id = 'CLOUUSSFO'
-    //         AND processed_date = '2024-03-15'
-    //         AND processed = 'P'`;
-
-    // const query = `SELECT DISTINCT unique_ref_nbr
-    // FROM dw_prod.interface_ar_his iah
-    // WHERE customer_id = 'CLOUUSSFO' limit 3`;
 
     console.info('query', query);
     const [rows] = await connections.execute(query);
@@ -176,15 +166,6 @@ async function getInvoicesFromMainTable(connections) {
                   WHERE bill_to_nbr = '${process.env.BILL_NUMBER}'
                   AND CAST(processed_date AS DATE) >= '${today}'
                   AND processed = 'P'`;
-    // const query = `SELECT DISTINCT unique_ref_nbr
-    //       FROM dw_prod.interface_ar_his iah
-    //       WHERE customer_id = 'CLOUUSSFO'
-    //         AND processed_date = '2024-03-15'
-    //         AND processed = 'P'`;
-
-    // const query = `SELECT DISTINCT unique_ref_nbr
-    // FROM dw_prod.interface_ar_his iah
-    // WHERE customer_id = 'CLOUUSSFO' limit 3`;
 
     console.info('query', query);
     const [rows] = await connections.execute(query);
@@ -209,7 +190,7 @@ async function fetchInvoiceDetails(invoice, connections) {
     console.info('query', query);
     let [rows] = await connections.execute(query);
     let result = rows;
-    if(result.length > 0){
+    if(result[0].invoice_date && result[0].gc_code && result[0].currency && result[0].invoice_nbr && result[0].total_sum){
       return result
     }
     const tableNameFallback = `${dbName}interface_ar`;
@@ -227,7 +208,6 @@ async function fetchInvoiceDetails(invoice, connections) {
 async function callWtRestApi(uniqueRefNbr, gcCode) {
   try {
     const url = `${process.env.WEBSLI_URL}/${process.env.WEBSLI_TOKEN}/invoice=${uniqueRefNbr}|company=${gcCode}/doctype=BI`;
-    // const url = `https://websli.omnilogistics.com/wtProd/getwtdoc/v1/json/${process.env.WEBSLI_TOKEN}/invoice=${uniqueRefNbr}|company=${gcCode}/doctype=BI`;
     console.info(`url: ${url}`);
 
     const response = await axios.get(url);
