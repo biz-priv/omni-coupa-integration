@@ -65,8 +65,8 @@ module.exports.handler = async (event, context) => {
         }
         const b64str = await callWtRestApi(uniqueRefNbr, gcCode);
 
-        const xmlTOCoupa = await prepareXML(guid, invoiceNbr, totalSum, b64str, invoiceDate, currency);
-        dynamoData.XmlTOCoupa = xmlTOCoupa;
+        const { finalPayload: xmlTOCoupa, payloadWithoutBase64 } = await prepareXML(guid, invoiceNbr, totalSum, b64str, invoiceDate, currency);
+        dynamoData.XmlTOCoupa = payloadWithoutBase64;
 
         const response = await makeApiRequest(guid, xmlTOCoupa);
         dynamoData.ResponseFromCoupa = response;
@@ -78,7 +78,7 @@ module.exports.handler = async (event, context) => {
           dynamoData.StatusCode = get(statusCodeAndMessage, 'statusCode');
           dynamoData.Message = get(statusCodeAndMessage, 'statusMessage');
           dynamoData.Status = 'SUCCESS';
-        }else{
+        } else {
           dynamoData.StatusCode = get(statusCodeAndMessage, 'statusCode');
           dynamoData.Message = get(statusCodeAndMessage, 'statusMessage');
           dynamoData.Status = 'FAILED';
@@ -190,7 +190,7 @@ async function fetchInvoiceDetails(invoice, connections) {
     console.info('query', query);
     let [rows] = await connections.execute(query);
     let result = rows;
-    if(result[0].invoice_date && result[0].gc_code && result[0].currency && result[0].invoice_nbr && result[0].total_sum){
+    if (result[0].invoice_date && result[0].gc_code && result[0].currency && result[0].invoice_nbr && result[0].total_sum) {
       return result
     }
     const tableNameFallback = `${dbName}interface_ar`;

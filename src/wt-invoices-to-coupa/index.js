@@ -60,8 +60,8 @@ module.exports.handler = async (event, context) => {
         const totalSum = get(invoiceDetails, '[0].total_sum');
         const b64str = await callWtRestApi(invoice);
 
-        const xmlTOCoupa = await prepareXML(guid, invoice, totalSum, b64str, invoiceDate, currency);
-        dynamoData.XmlTOCoupa = xmlTOCoupa;
+        const { finalPayload: xmlTOCoupa, payloadWithoutBase64 } = await prepareXML(guid, invoice, totalSum, b64str, invoiceDate, currency);
+        dynamoData.XmlTOCoupa = payloadWithoutBase64;
 
         const response = await makeApiRequest(guid, xmlTOCoupa);
         dynamoData.ResponseFromCoupa = response;
