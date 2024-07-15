@@ -14,8 +14,8 @@ function:
       - 'src/shared/**'
     exclude:
       - '**/*'
-  # events:
-  #   - schedule: cron(*/30 * * * ? *)
+  events:
+    - schedule: cron(0 22 * * ? *)   # job to run at 10 PM UTC daily.
   environment:
     DB_NAME: ${ssm:/omni-dw/${self:provider.stage}/rds/db.name}
     DB_USERNAME: ${ssm:/omni-dw/${self:provider.stage}/rds/db.username}
