@@ -15,7 +15,7 @@ function:
     exclude:
       - '**/*'
   events:
-    - schedule: cron(0 22 * * ? *)   # job to run at 10 PM UTC daily.
+    - schedule: cron(0 22 * * ? *)   # UTC :10:00 PM, CST: 5:00 PM, IST: 3:30 AM
   environment:
     DB_NAME: ${ssm:/omni-dw/${self:provider.stage}/rds/db.name}
     DB_USERNAME: ${ssm:/omni-dw/${self:provider.stage}/rds/db.username}
