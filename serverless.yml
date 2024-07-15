@@ -1,4 +1,4 @@
-service: service-name # Change this to your service name
+service: omni-coupa-integration
 
 provider:
   name: aws
@@ -11,8 +11,12 @@ provider:
       - ${ssm:/omni-dw/${self:provider.stage}/lambda/sgId}
     subnetIds:
       - ${ssm:/omni-dw/${self:provider.stage}/lambda/subnetA}
+  stackTags:
+    Application: OmniCoupaIntegration
+    CreateBy: BizCloudExperts
+    Environment: ${self:provider.stage}
   iamRoleStatements:
-    - Effect: 'Allow'
+    - Effect: "Allow"
       Action:
         - logs:CreateLogGroup
         - logs:CreateLogStream
@@ -23,21 +27,51 @@ provider:
         - ec2:DeleteNetworkInterface
         - ec2:AssignPrivateIpAddresses
         - ec2:UnassignPrivateIpAddresses
-      Resource: '*'
+      Resource: "*"
+    - Effect: Allow
+      Action:
+        - s3:GetObject
+        - s3:ListBucket
+        - s3:PutObject
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:GetItem
+        - dynamodb:Query
+        - dynamodb:DeleteItem
+        - dynamodb:Scan
+        - sqs:GetQueueUrl
+        - sqs:GetQueueAttributes
+        - sqs:ReceiveMessage
+        - sqs:DeleteMessage
+        - sqs:SendMessageBatch
+        - sqs:SendMessage
+        - secretsmanager:*
+        - sns:*
+        - ses:*
+      Resource: "*"
   environment:
     REGION: ${self:provider.region}
     STAGE: ${self:provider.stage}
-    ERROR_SNS_TOPIC_ARN: ${ssm:/omni-reports/${self:provider.stage}/error-notification/sns/arn}
+    ERROR_SNS_TOPIC_ARN: ${ssm:/omni-coupa-integration/${self:provider.stage}/error-notification-sns-arn}
 
   deploymentBucket:
     name: ${ssm:/omni-dw/${self:provider.stage}/sls/deployment/bucket}
     serverSideEncryption: AES256
 
+custom:
+  region: ${opt:region, 'us-east-1'}
+  stage: ${opt:stage, 'dev'}
+  tags:
+    Application: OmniCoupaIntegration
+    CreateBy: BizCloudExperts
+    Environment: ${self:custom.stage}
+
 package:
   individually: true
 
 functions:
-
+  cw-invoices-to-coupa: ${file(config/functions/cw-invoices-to-coupa.yml):function}
+  wt-invoices-to-coupa: ${file(config/functions/wt-invoices-to-coupa.yml):function}
 layers:
   NodeModules:
     path: lambdaLayer/lib
