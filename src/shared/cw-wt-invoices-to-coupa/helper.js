@@ -164,7 +164,7 @@ async function prepareXML(guid, filename, total, b64str, InvoiceDate, curr) {
               },
               Comments: {
                 Attachment: {
-                  URL: `cid: ${filename}.pdf`,
+                  URL: `cid:${filename}.pdf`,
                 },
               },
             },
@@ -268,8 +268,8 @@ async function prepareXML(guid, filename, total, b64str, InvoiceDate, curr) {
 
     const xmlPayload = builder.buildObject(xmlData);
     console.info('xmlPayload', xmlPayload);
-    const payloadWithoutBase64 = `--${guid}\r\nContent-type: text/xml; charset=UTF-8\r\nContent-ID: <payload.xml>\r\n\r\n<?xml version="1.0" encoding="UTF-8"?>\r\n<!DOCTYPE cXML SYSTEM "http://xml.cXML.org/schemas/cXML/1.2.020/InvoiceDetail.dtd">\r\n${xmlPayload}\r\n--${guid}\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Disposition: inline; filename='${filename}.pdf'\r\nContent-Transfer-Encoding: base64\r\nContent-ID: <${filename}.pdf>\r\n\r\n<base64>\r\n--${guid}--`;
-    const finalPayload = `--${guid}\r\nContent-type: text/xml; charset=UTF-8\r\nContent-ID: <payload.xml>\r\n\r\n<?xml version="1.0" encoding="UTF-8"?>\r\n<!DOCTYPE cXML SYSTEM "http://xml.cXML.org/schemas/cXML/1.2.020/InvoiceDetail.dtd">\r\n${xmlPayload}\r\n--${guid}\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Disposition: inline; filename='${filename}.pdf'\r\nContent-Transfer-Encoding: base64\r\nContent-ID: <${filename}.pdf>\r\n\r\n${b64str}\r\n--${guid}--`;
+    const payloadWithoutBase64 = `--${guid}\r\nContent-type: text/xml; charset=UTF-8\r\nContent-ID: <payload.xml>\r\n\r\n<?xml version="1.0" encoding="UTF-8"?>\r\n<!DOCTYPE cXML SYSTEM "http://xml.cXML.org/schemas/cXML/1.2.020/InvoiceDetail.dtd">\r\n${xmlPayload}\r\n--${guid}\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Disposition: inline; filename=${filename}.pdf\r\nContent-Transfer-Encoding: base64\r\nContent-ID: <${filename}.pdf>\r\n\r\n<base64>\r\n--${guid}--`;
+    const finalPayload = `--${guid}\r\nContent-type: text/xml; charset=UTF-8\r\nContent-ID: <payload.xml>\r\n\r\n<?xml version="1.0" encoding="UTF-8"?>\r\n<!DOCTYPE cXML SYSTEM "http://xml.cXML.org/schemas/cXML/1.2.020/InvoiceDetail.dtd">\r\n${xmlPayload}\r\n--${guid}\r\nContent-Type: text/plain; charset=utf-8\r\nContent-Disposition: inline; filename=${filename}.pdf\r\nContent-Transfer-Encoding: base64\r\nContent-ID: <${filename}.pdf>\r\n\r\n${b64str}\r\n--${guid}--`;
     return { finalPayload, payloadWithoutBase64 };
   } catch (error) {
     console.error('Error in getProductValues:', error);
