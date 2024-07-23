@@ -1,0 +1,30 @@
+---
+function:
+  name: omni-cw-invoices-to-coupa-${self:provider.stage}
+  handler: src/cw-invoices-to-coupa/index.handler
+  runtime: nodejs20.x
+  timeout: 900
+  tags:
+    Name: cw-invoices-to-coupa
+  layers:
+    - { Ref: NodeModulesLambdaLayer }
+  package:
+    include:
+      - 'src/cw-invoices-to-coupa/**'
+      - 'src/shared/**'
+    exclude:
+      - '**/*'
+  events:
+    - schedule: cron(30 22 * * ? *) # UTC :10:30 PM, CST: 5:30 PM, IST: 4:00 AM
+  environment:
+    DB_NAME: ${ssm:/omni-dw/${self:provider.stage}/rds/db.name}
+    DB_USERNAME: ${ssm:/omni-dw/${self:provider.stage}/rds/db.username}
+    DB_HOST: ${ssm:/omni-dw/${self:provider.stage}/rds/db.endpoint.ip}
+    DB_PORT: ${ssm:/omni-dw/${self:provider.stage}/rds/db.port}
+    DB_PASSWORD: ${ssm:/omni-dw/${self:provider.stage}/rds/db.password}
+    ENVIRONMENT: ${self:provider.stage}
+    LOGS_TABLE: ${ssm:/omni-coupa-integration/${self:provider.stage}/omni-coupa-logs-table-name}
+    COUPA_API_URL: ${ssm:/omni-coupa-integration/${self:provider.stage}/api-url}
+    BILL_NUMBER: ${ssm:/omni-coupa-integration/${self:provider.stage}/cw-bill-number}
+    WEBSLI_TOKEN: ${ssm:/omni-coupa-integration/${self:provider.stage}/websli-token}
+    WEBSLI_URL: ${ssm:/dell-narvar-pod-doc/${self:provider.stage}/websli-url}
